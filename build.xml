@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="java-app" default="rebuild">
+
+    <!-- инициализация: подгрузка properties и установка libs -->
+    <target name="init">
+        <property file="build.properties"/>
+
+        <path id="libs">
+            <fileset dir="${module.lib.dir}">
+                <include name="**/*.jar"/>
+            </fileset>
+            <fileset dir="jni4net-0.8.6.0-bin/lib" includes="jni4net.j-0.8.6.0.jar"/>
+        </path>
+
+        <!-- проверяем наличие файла net-app.dll -->
+        <fail message="File not found: net-app.dll. Make sure you have built .NET library already.">
+            <condition>
+                <not>
+                    <available file="net-app/net-app/bin/Debug/net-app.dll"/>
+                </not>
+            </condition>
+        </fail>
+    </target>
+
+    <!-- полная чистка build -->
+    <target name="clean" depends="init">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <!-- генерация кода java-переходников по имеющейся дотнетовой dll -->
+    <target name="codegen" depends="init">
+        <mkdir dir="${module.build.dir}"/>
+
+        <mkdir dir="${build.dir}/proxygen"/>
+
+        <exec executable="jni4net-0.8.6.0-bin\bin\proxygen.exe" >
+            <arg value="net-app\net-app\bin\Debug\net-app.dll"/>
+            <arg value="-wd"/>
+            <arg value="${build.dir}/proxygen"/>
+        </exec>
+    </target>
+
+    <!-- генерация dll-обертки над имеющейся дотнетовой библиотекой -->
+    <target name="build-dotnet-wrapper" depends="codegen">
+        <!-- компилятор c# -->
+        <exec executable="${csharp.compiler.path}">
+            <arg value="/nologo"/>
+            <arg value="/warn:0"/>
+            <arg value="/t:library"/>
+            <arg value="/out:${build.dir}\proxygen\net-app.j4n.dll"/>
+            <arg value="/recurse:${build.dir}\proxygen\clr\*.cs"/>
+            <arg value="/reference:&quot;net-app\net-app\bin\Debug\net-app.dll&quot;"/>
+            <arg value="/reference:&quot;jni4net-0.8.6.0-bin\lib\jni4net.n-0.8.6.0.dll&quot;"/>
+        </exec>
+    </target>
+
+    <!-- компиляция и сборка основного java-приложения -->
+    <target name="build" depends="init, build-dotnet-wrapper">
+        <mkdir dir="${module.build.dir}"/>
+
+        <javac srcdir="${module.src.dir}:${build.dir}/proxygen/jvm"
+               destdir="${module.build.dir}"
+               debug="${compiler.debug}"
+               optimize="${compiler.optimize}"
+               deprecation="${compiler.deprecation}"
+               encoding="${compiler.encoding}">
+            <classpath refid="libs"/>
+        </javac>
+
+        <copy todir="${module.build.dir}">
+            <fileset dir="${module.src.dir}">
+                <include name="**/*"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+
+        <mkdir dir="${module.dist.dir}"/>
+
+        <jar jarfile="${module.dist.dir}/${module.name}.jar">
+            <fileset dir="${module.build.dir}"/>
+        </jar>
+
+        <copy todir="${module.dist.dir}">
+            <fileset dir="${module.lib.dir}"/>
+            <fileset dir="etc"/>
+            <fileset dir="${build.dir}/proxygen" includes="net-app.j4n.dll"/>
+            <fileset dir="jni4net-0.8.6.0-bin/lib">
+                <include name="*.dll"/>
+                <include name="jni4net.j-0.8.6.0.jar"/>
+            </fileset>
+            <fileset dir="net-app/net-app/bin/Debug" includes="*.dll"/>
+        </copy>
+    </target>
+
+    <!-- удаление всего, затем сборка заново -->
+    <target name="rebuild" depends="clean, build"/>
+</project>

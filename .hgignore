@@ -1,0 +1,7 @@
+syntax: glob
+.idea/
+build
+net-app/net-app.suo
+net-app/net-app/bin/
+net-app/net-app/obj
+out/
