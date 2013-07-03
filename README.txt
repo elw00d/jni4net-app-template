@@ -1,4 +1,13 @@
-﻿Заметки на полях
+﻿How-to build and run:
+
+1. Go to net-app directory and open net-app.sln Visual Studio. Build project.
+
+2. Run ant in root directory
+
+3. Go to build\java-app directory. There are run.bat and run-jpda-wait.bat file you can
+   use to execute your java-with-dotnet-application.
+
+Remarks (russian only yet):
 
 0. Почему-то proxygen не обрабатывает exe-файлы, вы обязаны делать dll.
 
